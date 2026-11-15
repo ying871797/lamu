@@ -169,6 +169,7 @@
   var sheetLocked = false;
   var activityTimer = null;
   var toastTimer = null;
+  var pendingToast = null;
   var closeTimer = null;
 
   function persist() {
@@ -312,10 +313,22 @@
   // ---------- 提示 ----------
   function toast(msg, ms) {
     var el = $("toast");
+    var overlay = $("overlay");
+    // 弹层完全展开时，toast 会压住弹层底部按钮，改为关闭弹层后再提示。
+    if (!overlay.hidden && overlay.classList.contains("show")) {
+      pendingToast = { msg: msg, ms: ms };
+      return;
+    }
     el.textContent = msg;
     el.classList.add("show");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { el.classList.remove("show"); }, ms || 2200);
+  }
+
+  function hideToast() {
+    clearTimeout(toastTimer);
+    var el = $("toast");
+    if (el) el.classList.remove("show");
   }
 
   // ---------- 弹层 ----------
@@ -329,6 +342,7 @@
     $("sheetFoot").innerHTML = opts.foot || "";
     var overlay = $("overlay");
     clearTimeout(closeTimer);
+    hideToast();
     overlay.hidden = false;
     requestAnimationFrame(function () { overlay.classList.add("show"); });
     $("sheetBody").scrollTop = 0;
@@ -347,6 +361,11 @@
     clearInterval(activityTimer);
     activityTimer = null;
     closeTimer = setTimeout(function () { overlay.hidden = true; }, 180);
+    if (pendingToast) {
+      var p = pendingToast;
+      pendingToast = null;
+      setTimeout(function () { toast(p.msg, p.ms); }, 200);
+    }
   }
 
   $("sheetClose").addEventListener("click", closeSheet);
