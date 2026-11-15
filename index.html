@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#05070d">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<title>拉姆探险记 · H5 移植版</title>
+<style>
+  :root{
+    --bg:#05070d;
+    --bg2:#0a1220;
+    --panel:#0b1424;
+    --panel2:#0e1a2c;
+    --line:rgba(110,210,245,.16);
+    --line-strong:rgba(110,210,245,.32);
+    --cyan:#63dcff;
+    --cyan-soft:#9cecff;
+    --text:#dceef6;
+    --muted:#7593a4;
+    --green:#54d98c;
+    --red:#ff6f7d;
+    --gold:#ffd166;
+    --shadow:0 24px 60px rgba(0,0,0,.55);
+    --radius:30px;
+  }
+  *{box-sizing:border-box}
+  html{height:100%}
+  body{
+    margin:0;
+    min-height:100dvh;
+    color:var(--text);
+    background:
+      radial-gradient(900px 600px at 18% -10%, rgba(52,168,220,.18), transparent 60%),
+      radial-gradient(700px 500px at 100% 110%, rgba(80,220,150,.10), transparent 55%),
+      var(--bg);
+    font-family:"PingFang SC","HarmonyOS Sans SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:22px 14px calc(22px + env(safe-area-inset-bottom));
+  }
+  button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+
+  .app{width:min(430px,100%);display:flex;flex-direction:column;gap:14px}
+
+  .brand{display:flex;align-items:flex-end;justify-content:space-between;padding:0 6px}
+  .brand h1{margin:0;font-size:20px;letter-spacing:.14em;font-weight:600;color:var(--cyan-soft)}
+  .brand h1 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--cyan);box-shadow:0 0 14px var(--cyan);margin-right:9px;vertical-align:1px}
+  .brand .sub{font-size:11px;color:var(--muted);letter-spacing:.18em;text-transform:uppercase}
+
+  .device{
+    position:relative;
+    background:linear-gradient(180deg,var(--panel2),var(--panel) 42%,#08101c);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px 16px 14px;
+    box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.04);
+    overflow:hidden;
+  }
+  .device::before{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(420px 240px at 50% 18%, rgba(80,210,255,.10), transparent 70%);
+  }
+  .device::after{
+    content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+    background:linear-gradient(115deg,rgba(255,255,255,.05),transparent 28%,transparent 72%,rgba(255,255,255,.03));
+    mix-blend-mode:screen;
+  }
+
+  .bar-btn{
+    position:relative;z-index:1;
+    width:100%;height:50px;
+    display:flex;align-items:center;justify-content:center;gap:10px;
+    border-radius:999px;
+    background:linear-gradient(180deg,rgba(22,39,58,.94),rgba(12,23,38,.94));
+    border:1px solid var(--line-strong);
+    color:var(--cyan-soft);
+    font-size:15px;letter-spacing:.22em;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 8px 20px rgba(0,0,0,.25);
+    transition:transform .12s ease, border-color .2s ease, background .2s ease;
+  }
+  .bar-btn small{font-size:10px;letter-spacing:.08em;color:var(--muted);letter-spacing:.06em}
+  .bar-btn:active{transform:scale(.985)}
+  .bar-btn:hover{border-color:rgba(120,225,255,.55)}
+  .bar-btn.bottom{margin-top:12px;background:linear-gradient(180deg,rgba(30,54,70,.96),rgba(16,31,48,.96))}
+  .bar-btn.bottom.ready{border-color:rgba(84,217,140,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 24px rgba(84,217,140,.15)}
+  .bar-btn.bottom.ready span{color:#b8ffd6}
+  .bar-btn:disabled{opacity:.5;cursor:not-allowed}
+
+  .scene{
+    position:relative;z-index:1;
+    height:248px;
+    margin:14px 0 6px;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    user-select:none;
+  }
+  .scene-glow{
+    position:absolute;width:220px;height:220px;border-radius:50%;
+    background:radial-gradient(circle,rgba(90,220,255,.22),rgba(90,220,255,.05) 45%,transparent 70%);
+    filter:blur(4px);
+    animation:breathe 5s ease-in-out infinite;
+  }
+  @keyframes breathe{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.08);opacity:1}}
+  .lam-svg{position:relative;width:250px;height:236px;overflow:visible}
+  .lam-inner{transform:scale(var(--lam-scale,1));transform-origin:130px 190px;transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+  .lam-bob{animation:bob 3.6s ease-in-out infinite}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+  .eyes{transform-box:fill-box;transform-origin:center;animation:blink 6.4s infinite}
+  @keyframes blink{0%,42%,46%,100%{transform:scaleY(1)}44%{transform:scaleY(.08)}}
+  .aura{opacity:0;transition:opacity .4s ease}
+  .leaf2,.leaf3{display:none}
+  [data-stage="2"] .leaf2,[data-stage="3"] .leaf2,[data-stage="4"] .leaf2,[data-stage="5"] .leaf2{display:block}
+  [data-stage="4"] .leaf3,[data-stage="5"] .leaf3{display:block}
+  [data-stage="5"] .aura{opacity:1;animation:aurapulse 3s ease-in-out infinite}
+  @keyframes aurapulse{0%,100%{opacity:.55}50%{opacity:.95}}
+  .dead-eyes{display:none}
+  .is-dead .eyes{display:none}
+  .is-dead .dead-eyes{display:block}
+  .is-dead .lam-inner{filter:grayscale(1) brightness(.72)}
+  .is-dead .lam-bob{animation:none}
+  .is-dead .scene-glow{background:radial-gradient(circle,rgba(160,170,190,.16),transparent 70%)}
+
+  .scene-tag{
+    position:absolute;bottom:2px;left:50%;transform:translateX(-50%);
+    font-size:11px;letter-spacing:.12em;color:var(--muted);
+    padding:4px 12px;border:1px solid var(--line);border-radius:999px;
+    background:rgba(6,12,21,.72);white-space:nowrap;
+  }
+  .scene-tag.warn{color:#ffc2c8;border-color:rgba(255,111,125,.4)}
+  .scene-tag.dead{color:#cfd6e2;border-color:rgba(190,200,220,.35)}
+
+  .stat-list{position:relative;z-index:1;padding:6px 4px 0}
+  .stat-row{
+    display:flex;align-items:baseline;justify-content:space-between;
+    padding:7px 4px;border-bottom:1px dashed rgba(110,210,245,.09);
+    font-size:14px;
+  }
+  .stat-row:last-child{border-bottom:0}
+  .stat-row .label{color:var(--muted);letter-spacing:.16em;font-size:12px}
+  .stat-row .val{font-size:15px;letter-spacing:.04em;color:var(--text);font-variant-numeric:tabular-nums}
+  .stat-row.name .val{color:var(--cyan-soft);letter-spacing:.06em}
+  .stat-row.hunger .val{color:#b8ffd6}
+  .stat-row.hunger.low .val{color:var(--red)}
+  .stat-row .val b{font-weight:600}
+
+  .subnav{position:relative;z-index:1;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+  .subnav button{
+    height:38px;border-radius:12px;border:1px solid var(--line);
+    background:rgba(13,25,40,.7);color:#b9d7e4;font-size:12px;letter-spacing:.1em;
+    transition:border-color .2s ease,color .2s ease,background .2s ease;
+  }
+  .subnav button:hover{border-color:var(--line-strong);color:var(--cyan-soft);background:rgba(18,34,52,.8)}
+
+  .footnote{margin:0;text-align:center;font-size:11px;color:#566f7d;letter-spacing:.08em;line-height:1.7}
+
+  /* ---------- overlay / sheet ---------- */
+  .overlay{
+    position:fixed;inset:0;z-index:50;
+    display:flex;align-items:flex-end;justify-content:center;
+    background:rgba(2,5,10,.72);
+    backdrop-filter:blur(8px);
+    padding:16px;
+    opacity:0;transition:opacity .18s ease;
+  }
+  .overlay.show{opacity:1}
+  .overlay[hidden]{display:none}
+  @media(min-width:560px){.overlay{align-items:center}}
+  .sheet{
+    width:min(430px,100%);
+    max-height:min(88dvh,720px);
+    display:flex;flex-direction:column;
+    background:linear-gradient(180deg,#0d1728,#0a1220 60%,#08101b);
+    border:1px solid var(--line-strong);
+    border-radius:24px;
+    box-shadow:0 30px 80px rgba(0,0,0,.65);
+    transform:translateY(16px) scale(.985);
+    transition:transform .2s cubic-bezier(.2,.8,.2,1);
+    overflow:hidden;
+  }
+  .overlay.show .sheet{transform:none}
+  .sheet-head{
+    display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+    padding:20px 20px 12px;border-bottom:1px solid var(--line);
+  }
+  .sheet-kicker{font-size:10px;letter-spacing:.24em;color:var(--muted);text-transform:uppercase;margin-bottom:5px}
+  .sheet-head h2{margin:0;font-size:19px;letter-spacing:.08em;color:var(--cyan-soft);font-weight:600}
+  .icon-btn{
+    flex:0 0 auto;width:34px;height:34px;border-radius:50%;
+    border:1px solid var(--line);background:rgba(255,255,255,.03);
+    font-size:20px;line-height:1;color:#9fbccc;
+    display:grid;place-items:center;transition:border-color .2s,color .2s;
+  }
+  .icon-btn:hover{border-color:var(--line-strong);color:var(--cyan)}
+  .sheet-body{padding:16px 20px;overflow-y:auto;overscroll-behavior:contain;line-height:1.75;font-size:14px;color:#cfe4ee}
+  .sheet-body p{margin:0 0 12px}
+  .sheet-body p:last-child{margin-bottom:0}
+  .sheet-foot{padding:12px 20px calc(16px + env(safe-area-inset-bottom));border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+  .btn{
+    min-width:84px;height:38px;padding:0 18px;border-radius:11px;
+    border:1px solid var(--line-strong);background:rgba(22,42,62,.85);
+    color:var(--cyan-soft);font-size:13px;letter-spacing:.1em;
+    transition:background .2s,border-color .2s,transform .12s;
+  }
+  .btn:hover{background:rgba(32,58,82,.95);border-color:rgba(120,225,255,.55)}
+  .btn:active{transform:scale(.98)}
+  .btn.ghost{background:transparent;color:#9fbccc;border-color:var(--line)}
+  .btn.small{min-width:0;height:32px;padding:0 12px;font-size:12px}
+  .btn.warn{border-color:rgba(255,111,125,.4);color:#ffc2c8;background:rgba(60,20,28,.5)}
+
+  .result-loc{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .result-loc .pin{width:8px;height:8px;border-radius:50%;background:var(--cyan);box-shadow:0 0 12px var(--cyan)}
+  .result-loc b{font-size:15px;letter-spacing:.12em;color:var(--cyan-soft);font-weight:600}
+  .result-cost{font-size:12px;color:var(--muted);margin-bottom:12px;letter-spacing:.06em}
+  .result-text{white-space:pre-wrap;word-break:break-word}
+  .effect-chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}
+  .chip{font-size:11px;letter-spacing:.05em;padding:4px 9px;border-radius:999px;border:1px solid var(--line);color:#9fc2d2;background:rgba(255,255,255,.02)}
+  .chip.up{color:#b8ffd6;border-color:rgba(84,217,140,.35);background:rgba(84,217,140,.07)}
+  .chip.down{color:#ffc2c8;border-color:rgba(255,111,125,.35);background:rgba(255,111,125,.07)}
+  .chip.medal{color:#ffe3a3;border-color:rgba(255,209,102,.4);background:rgba(255,209,102,.08)}
+
+  .poem-title{font-size:17px;color:var(--cyan-soft);letter-spacing:.1em;margin:0 0 4px;font-weight:600}
+  .poem-author{font-size:12px;color:var(--muted);letter-spacing:.14em;margin:0 0 14px}
+  .poem-body{font-family:"Songti SC","STSong","SimSun",serif;font-size:16px;line-height:2;color:#e2eff5;white-space:pre-wrap}
+  .content-text{white-space:pre-wrap;word-break:break-word}
+
+  .pager{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;padding-top:12px;border-top:1px dashed rgba(110,210,245,.12);font-size:12px;color:var(--muted)}
+  .pager .btns{display:flex;gap:8px}
+
+  .info-grid{display:grid;grid-template-columns:1fr auto;gap:0}
+  .info-grid .k{padding:6px 0;font-size:12px;color:var(--muted);letter-spacing:.06em;border-bottom:1px dashed rgba(110,210,245,.08)}
+  .info-grid .v{padding:6px 0;text-align:right;font-size:13px;color:#d6e9f2;font-variant-numeric:tabular-nums;border-bottom:1px dashed rgba(110,210,245,.08)}
+  .info-section{margin:16px 0 8px;font-size:11px;letter-spacing:.24em;color:var(--cyan);opacity:.8}
+  .medal-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px dashed rgba(110,210,245,.08);font-size:13px}
+  .medal-row .m{display:flex;align-items:center;gap:8px;color:#d6e9f2}
+  .medal-dot{width:9px;height:9px;border-radius:50%;background:#2b3c4a;border:1px solid #3d5566}
+  .medal-row.on .medal-dot{background:var(--gold);border-color:#ffe2a0;box-shadow:0 0 10px rgba(255,209,102,.55)}
+  .medal-row .n{color:var(--muted);font-variant-numeric:tabular-nums}
+
+  .activity-item{
+    display:flex;align-items:center;gap:12px;padding:12px 0;
+    border-bottom:1px dashed rgba(110,210,245,.1);
+  }
+  .activity-item:last-child{border-bottom:0}
+  .activity-icon{
+    flex:0 0 42px;width:42px;height:42px;border-radius:12px;
+    display:grid;place-items:center;font-size:19px;
+    background:rgba(80,200,255,.08);border:1px solid var(--line);
+  }
+  .activity-icon svg{width:20px;height:20px;fill:none;stroke:#7fe0a0;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .activity-main{flex:1;min-width:0}
+  .activity-main .t{font-size:14px;color:#e0f1f7;letter-spacing:.06em}
+  .activity-main .d{font-size:11px;color:var(--muted);margin-top:2px;letter-spacing:.04em}
+  .activity-side{text-align:right;flex:0 0 auto}
+  .activity-side .p{font-size:12px;color:var(--green);font-variant-numeric:tabular-nums}
+  .activity-side button{
+    margin-top:5px;height:30px;padding:0 13px;border-radius:9px;
+    border:1px solid var(--line-strong);background:rgba(24,46,66,.9);
+    color:var(--cyan-soft);font-size:12px;letter-spacing:.08em;
+  }
+  .activity-side button:disabled{opacity:.4;cursor:not-allowed}
+  .note{font-size:11.5px;line-height:1.75;color:var(--muted);background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:12px}
+  .note b{color:#9fc2d2;font-weight:600}
+
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+  .field label{font-size:11px;letter-spacing:.16em;color:var(--muted)}
+  .field input,.field select{
+    height:40px;border-radius:10px;border:1px solid var(--line);
+    background:rgba(255,255,255,.03);color:var(--text);padding:0 12px;font:inherit;font-size:14px;
+  }
+  .field input:focus,.field select:focus{outline:none;border-color:var(--line-strong)}
+  .seg{display:flex;gap:6px}
+  .seg button{flex:1;height:36px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.02);color:#9fbccc;font-size:12px}
+  .seg button.on{border-color:var(--line-strong);color:var(--cyan);background:rgba(80,200,255,.1)}
+
+  .toast{
+    position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translate(-50%,12px);
+    z-index:80;max-width:min(380px,90vw);
+    padding:10px 16px;border-radius:999px;
+    background:rgba(10,20,32,.96);border:1px solid var(--line-strong);
+    color:#d9eef7;font-size:12.5px;letter-spacing:.05em;line-height:1.5;
+    box-shadow:0 18px 44px rgba(0,0,0,.5);
+    opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;
+    text-align:center;
+  }
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+
+  @media(max-width:380px){
+    .brand h1{font-size:18px}
+    .scene{height:222px}
+    .lam-svg{width:224px;height:212px}
+    .bar-btn{height:46px}
+  }
+  @media(prefers-reduced-motion:reduce){
+    *{animation:none !important;transition:none !important}
+  }
+  /* 矮屏（如 320×568）让弹层接近全屏，避免表单按钮被挤出可视区 */
+  @media(max-height:640px){
+    .sheet{max-height:calc(100dvh - 20px)}
+    .overlay{padding:10px}
+  }
+
+  /* ---------- 账号 ---------- */
+  .account-line{position:relative;z-index:1;text-align:center;margin:8px 0 0}
+  .sync-status{display:inline-flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.08em;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:3px 10px;background:rgba(255,255,255,.03)}
+  .sync-status.online{color:#8fe0b0;border-color:rgba(120,230,170,.35);background:rgba(30,70,50,.35)}
+  .sync-status.sync{color:#9cecff;border-color:rgba(99,220,255,.35);background:rgba(20,55,75,.35)}
+  .sync-status.warn{color:#ffd28a;border-color:rgba(255,190,90,.4);background:rgba(70,50,15,.35)}
+  .sync-status.offline{color:#ffb3b8;border-color:rgba(255,111,125,.35);background:rgba(60,20,28,.35)}
+  .account-hint{font-size:11.5px;line-height:1.7;color:var(--muted);margin:6px 0 0}
+  .account-tabs{display:flex;gap:6px;margin-bottom:12px}
+  .account-tabs button{flex:1;height:34px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--muted);font-size:12px;letter-spacing:.1em}
+  .account-tabs button.on{border-color:var(--line-strong);color:var(--cyan);background:rgba(80,200,255,.1)}
+  .account-form .btn{width:100%;margin-top:4px}
+  /* 矮屏下压缩表单间距，避免提交按钮被挤到滚动区外 */
+  .account-form .field{margin-bottom:11px}
+  .account-error{display:none;font-size:12px;color:#ffb3b8;background:rgba(60,20,28,.5);border:1px solid rgba(255,111,125,.35);border-radius:9px;padding:8px 10px;margin:8px 0}
+  .account-links{display:flex;justify-content:flex-end;margin-top:10px}
+  .account-links .link{background:none;border:none;color:var(--muted);font-size:12px;text-decoration:underline;text-underline-offset:3px}
+  .account-kv{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:13px}
+  .account-kv span{color:var(--muted);font-size:11px;letter-spacing:.08em}
+  .account-kv b{font-weight:600;color:#dceef6}
+  .account-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .account-actions .btn{flex:1 1 120px}
+  .recovery-code{font-family:"Cascadia Code","JetBrains Mono",Consolas,monospace;font-size:20px;letter-spacing:.12em;text-align:center;color:var(--cyan);background:rgba(80,200,255,.08);border:1px dashed var(--line-strong);border-radius:10px;padding:14px 10px;margin:12px 0;word-break:break-all}
+  .account-check{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:10px}
+  .migration-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+  .migration-card{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:rgba(255,255,255,.02);display:flex;flex-direction:column;gap:4px}
+  .migration-card b{font-size:13px;color:#dceef6}
+  .migration-card span{font-size:11px;color:var(--muted)}
+  .migration-card small{font-size:11px;color:#8fb7c8}
+  .migration-card.recommend{border-color:var(--line-strong);background:rgba(80,200,255,.08)}
+  .turnstile{min-height:0;margin:6px 0}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="brand">
+    <h1><span class="dot"></span>拉姆探险记</h1>
+    <div class="sub">H5 · V1.2.1 内容移植</div>
+  </header>
+
+  <main class="device">
+    <button class="bar-btn" id="exploreBtn" type="button">
+      <span>探险</span>
+      <small id="exploreCost">消耗 3–17 饥饿</small>
+    </button>
+
+    <section class="scene" id="scene" title="点一点拉姆" aria-label="点击拉姆对话">
+      <div class="scene-glow"></div>
+      <svg class="lam-svg" id="lamSvg" data-stage="0" viewBox="0 0 260 240" role="img" aria-label="花盆里的拉姆">
+        <defs>
+          <radialGradient id="bodyGrad" cx="38%" cy="26%" r="78%">
+            <stop offset="0" stop-color="#a8f4ff"/>
+            <stop offset=".38" stop-color="#4fd0f4"/>
+            <stop offset=".78" stop-color="#1fa6dd"/>
+            <stop offset="1" stop-color="#137bb5"/>
+          </radialGradient>
+          <linearGradient id="potGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#ff746d"/>
+            <stop offset=".55" stop-color="#d92f36"/>
+            <stop offset="1" stop-color="#8f171d"/>
+          </linearGradient>
+          <linearGradient id="rimGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#ff9d92"/>
+            <stop offset="1" stop-color="#c9343a"/>
+          </linearGradient>
+          <linearGradient id="grassGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#8bf77a"/>
+            <stop offset=".55" stop-color="#4bd45a"/>
+            <stop offset="1" stop-color="#238c33"/>
+          </linearGradient>
+          <radialGradient id="auraGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0" stop-color="rgba(255,224,140,.28)"/>
+            <stop offset="65%" stop-color="rgba(255,209,102,.10)"/>
+            <stop offset="1" stop-color="rgba(255,209,102,0)"/>
+          </radialGradient>
+        </defs>
+
+        <ellipse cx="130" cy="228" rx="74" ry="9" fill="#000" opacity=".38"/>
+        <circle class="aura" cx="130" cy="130" r="104" fill="url(#auraGrad)"/>
+
+        <g class="lam-inner">
+          <g class="lam-bob">
+            <!-- 幼苗 -->
+            <g class="sprout">
+              <path d="M130 74 L130 46" stroke="#2f9440" stroke-width="3.4" stroke-linecap="round"/>
+              <path class="leaf leaf1" d="M130 60 C 116 54, 108 40, 116 30 C 129 35, 135 49, 132 62 Z" fill="#49c95f"/>
+              <path class="leaf leaf2" d="M130 58 C 144 52, 152 38, 145 28 C 132 33, 126 47, 128 60 Z" fill="#35b64e"/>
+              <path class="leaf leaf3" d="M130 50 C 128 38, 130 28, 136 22 C 141 31, 138 42, 133 52 Z" fill="#6ee87c"/>
+            </g>
+            <!-- 身体 -->
+            <path d="M130 70 C 172 70 197 104 197 142 C 197 176 169 190 130 190 C 91 190 63 176 63 142 C 63 104 88 70 130 70 Z" fill="url(#bodyGrad)"/>
+            <ellipse cx="103" cy="88" rx="26" ry="16" fill="#d8fbff" opacity=".18"/>
+            <!-- 眼睛 -->
+            <g class="eyes">
+              <ellipse cx="104" cy="116" rx="20.5" ry="24.5" fill="#fff"/>
+              <ellipse cx="156" cy="116" rx="20.5" ry="24.5" fill="#fff"/>
+              <ellipse cx="108" cy="120" rx="9.2" ry="13.2" fill="#152230"/>
+              <ellipse cx="152" cy="120" rx="9.2" ry="13.2" fill="#152230"/>
+              <circle cx="111" cy="115" r="3.1" fill="#fff"/>
+              <circle cx="155" cy="115" r="3.1" fill="#fff"/>
+            </g>
+            <!-- 死亡表情 -->
+            <g class="dead-eyes">
+              <path d="M90 104 L116 130 M116 104 L90 130" stroke="#2a3a46" stroke-width="5" stroke-linecap="round"/>
+              <path d="M144 104 L170 130 M170 104 L144 130" stroke="#2a3a46" stroke-width="5" stroke-linecap="round"/>
+            </g>
+            <path d="M122 146 Q130 153 138 146" stroke="#0a5d80" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <ellipse cx="84" cy="146" rx="9" ry="5" fill="#ff9db0" opacity=".55"/>
+            <ellipse cx="176" cy="146" rx="9" ry="5" fill="#ff9db0" opacity=".55"/>
+          </g>
+
+          <!-- 草丛 -->
+          <path d="M58 198 C 62 184 82 175 104 178 C 120 166 148 166 164 178 C 188 175 202 186 202 198 Z" fill="#1c6f2a"/>
+          <path d="M64 198 C 70 188 86 181 104 183 C 118 174 146 174 158 183 C 182 181 196 190 196 198 Z" fill="url(#grassGrad)"/>
+          <g fill="#63e572">
+            <path d="M88 184 C 84 172 87 164 92 160 C 97 170 99 179 97 186 Z"/>
+            <path d="M118 182 C 116 167 121 159 127 155 C 131 166 132 176 129 184 Z"/>
+            <path d="M150 183 C 150 168 156 161 162 157 C 164 168 163 178 159 185 Z"/>
+            <path d="M176 185 C 179 174 186 168 191 165 C 192 175 189 183 184 187 Z"/>
+          </g>
+          <g fill="#a8ff92" opacity=".55">
+            <path d="M95 183 C 92 174 95 168 99 165 C 102 173 102 180 100 185 Z"/>
+            <path d="M127 181 C 125 170 129 163 133 160 C 136 169 135 177 132 183 Z"/>
+            <path d="M159 182 C 159 172 163 166 167 163 C 168 172 166 179 163 184 Z"/>
+          </g>
+
+          <!-- 花盆 -->
+          <path d="M70 195 L190 195 L178 231 Q130 239 82 231 Z" fill="url(#potGrad)"/>
+          <path d="M84 205 L176 205 L172 218 Q130 225 88 218 Z" fill="#000" opacity=".12"/>
+          <rect x="64" y="188" width="132" height="15" rx="7.5" fill="url(#rimGrad)"/>
+          <rect x="71" y="191" width="118" height="3.6" rx="1.8" fill="#ffd0c8" opacity=".45"/>
+        </g>
+      </svg>
+      <div class="scene-tag" id="sceneTag">阶段 0 · 等级 0</div>
+    </section>
+
+    <section class="stat-list">
+      <div class="stat-row name"><span class="label">名称</span><span class="val" id="sName">你的拉姆</span></div>
+      <div class="stat-row"><span class="label">等级</span><span class="val" id="sLevel">0</span></div>
+      <div class="stat-row hunger" id="hungerRow"><span class="label">饥饿</span><span class="val" id="sHunger">100 / 100</span></div>
+      <div class="stat-row"><span class="label">体力</span><span class="val" id="sStamina">28</span></div>
+      <div class="stat-row"><span class="label">力量</span><span class="val" id="sStrength">8</span></div>
+      <div class="stat-row"><span class="label">速度</span><span class="val" id="sSpeed">23</span></div>
+    </section>
+
+    <button class="bar-btn bottom" id="feedBtn" type="button">
+      <span>喂养</span>
+      <small id="feedHint">活动值 0</small>
+    </button>
+
+    <nav class="subnav">
+      <button id="activityBtn" type="button">牧场活动</button>
+      <button id="infoBtn" type="button">信息</button>
+      <button id="settingsBtn" type="button">设置</button>
+    </nav>
+    <p class="account-line"><span id="syncStatus" class="sync-status">未登录</span></p>
+  </main>
+
+  <p class="footnote">点击拉姆说说话 · 数据保存在本地<br>用“牧场活动”代替原版的手环运动数据</p>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-head">
+      <div>
+        <div class="sheet-kicker" id="sheetKicker"></div>
+        <h2 id="sheetTitle"></h2>
+      </div>
+      <button class="icon-btn" id="sheetClose" type="button" aria-label="关闭">×</button>
+    </div>
+    <div class="sheet-body" id="sheetBody"></div>
+    <div class="sheet-foot" id="sheetFoot"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="game-data.js"></script>
+<script src="events.js"></script>
+<script src="game.js"></script>
+<script src="api-config.js"></script>
+<script src="account.js"></script>
+</body>
+</html>
